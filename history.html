@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WattGuard — History</title>
+<style>
+:root{--bg:#0b0f14;--panel:#131a22;--border:#22303d;--copper:#f0a94e;--text:#e6edf3;--dim:#8fa1b0;--fault:#e5484d;--safe:#3fb950}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:24px;max-width:1100px;margin:auto}
+a{color:var(--copper);text-decoration:none} h1{font-size:20px} .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+.c,.p{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}.c b{display:block;font-size:22px;color:var(--copper)}.c span{font-size:11px;color:var(--dim);text-transform:uppercase}
+canvas{width:100%;height:240px;display:block}.e{font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--border)}.e.fault{color:var(--fault)}.e.restore{color:var(--safe)}.e i{color:#5b6b78;font-style:normal;margin-right:8px}
+button{background:none;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:6px 12px;cursor:pointer}
+</style></head><body>
+<a href="/">← Dashboard</a> <h1>Stored history</h1>
+<div class="cards" id="cards"></div>
+<div class="p"><canvas id="c"></canvas></div>
+<h2 style="font-size:13px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase">Recent events</h2>
+<div class="p" id="ev"></div>
+<p><button onclick="if(confirm('Delete all stored data?'))fetch('/api/data',{method:'DELETE'}).then(load)">Clear data</button></p>
+<script>
+async function load(){
+  const [s,r,e]=await Promise.all(['/api/stats','/api/readings?limit=720','/api/events?limit=40'].map(u=>fetch(u).then(x=>x.json())));
+  document.getElementById('cards').innerHTML=[['Readings',s.readings],['Peak',s.peakWatts+' W'],['Average',s.avgWatts+' W'],['Energy',s.kWh+' kWh'],['Cost','₹'+s.cost]].map(([l,v])=>`<div class="c"><b>${v}</b><span>${l}</span></div>`).join('');
+  const cv=document.getElementById('c'),x=cv.getContext('2d'),W=cv.width=cv.clientWidth*devicePixelRatio,H=cv.height=240*devicePixelRatio;
+  x.clearRect(0,0,W,H); if(r.length<2)return; const mx=Math.max(...r.map(a=>a.watts),100)*1.1;
+  x.beginPath(); r.forEach((a,i)=>{const px=i/(r.length-1)*W,py=H-a.watts/mx*H; i?x.lineTo(px,py):x.moveTo(px,py)});
+  x.strokeStyle='#f0a94e';x.lineWidth=2*devicePixelRatio;x.stroke();
+  document.getElementById('ev').innerHTML=e.map(v=>`<div class="e ${v.cls}"><i>${new Date(v.t).toLocaleTimeString()}</i>${v.msg.replace(/</g,'&lt;')}</div>`).join('')||'No events yet';
+}
+load();setInterval(load,10000);
+</script></body></html>
